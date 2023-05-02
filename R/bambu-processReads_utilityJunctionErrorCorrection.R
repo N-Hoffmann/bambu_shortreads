@@ -246,7 +246,7 @@ useRefJunctionForConflict <- function(junctions, candidateJunctionsMinus,
             names(candidateJunctionsMinus)[!is.na(
                 candidateJunctionsMinus$mergedHighConfJunctionId)] %in%
                 names(candidateJunctionsPlus)[!is.na(
-                    candidateJunctionsPlus$mergedHighConfJunctionId)])])]
+                    candidateJunctionsPlus$mergedHighConfJunctionId)])])]    
     conflictNames <- names(conflictJunctions)
     scoreDiff <- junctions[candidateJunctionsPlus[
         conflictNames]$mergedHighConfJunctionId]$score - 

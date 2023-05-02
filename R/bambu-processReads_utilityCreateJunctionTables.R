@@ -8,19 +8,38 @@
 #' @importFrom GenomicRanges match
 #' @importFrom dplyr tibble %>% mutate select
 #' @noRd
-isore.constructJunctionTables <- function(unlisted_junctions, annotations,
-    genomeSequence, stranded = FALSE, verbose = FALSE) {
+isore.constructJunctionTables <- function(unlisted_junctions, annotations, shortReads,
+    genomeSequence, stranded = FALSE, verbose = FALSE, combined = FALSE) {
     start.ptm <- proc.time()
     if(length(unlisted_junctions)==0) return(NULL)
     #summarise junction counts and strand for all reads
+
+    print("in constructJunctionTables")
     uniqueJunctions <- createJunctionTable(unlisted_junctions,
         genomeSequence = genomeSequence)
+
+    print(uniqueJunctions)
+    print(length(uniqueJunctions))
+
     end.ptm <- proc.time()
     if (verbose) message("Finished creating junction list with splice motif ",
         "in ", round((end.ptm - start.ptm)[3] / 60, 1), " mins.")
 
     uniqueAnnotatedIntrons <- unique(unlistIntrons(annotations, 
         use.ids = FALSE))
+
+    if (length(shortReads) > 0){
+        print("Using shortReads for correction")
+        uniqueShortReadsIntrons <- unique(unlistIntrons(shortReads, use.ids = FALSE))
+        if(combined == TRUE){
+            print("Using combination of shortReads and Annotations")
+            uniqueAnnotatedIntrons <- SparseSummarizedExperiment::combine(uniqueShortReadsIntrons, uniqueAnnotatedIntrons)
+        } else{
+        print("Using shortReads only as annotations")
+        uniqueAnnotatedIntrons <- uniqueShortReadsIntrons
+        }
+    }
+    
     # correct strand of junctions based on (inferred) strand of reads
     strand(uniqueJunctions) <- junctionStrandCorrection(uniqueJunctions,
         unlisted_junctions, uniqueAnnotatedIntrons,
@@ -36,6 +55,11 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations,
             annotatedStart, annotatedEnd)
     # correct junction coordinates using logistic regression classifier
     uniqueJunctions <- junctionErrorCorrection(uniqueJunctions, verbose)
+
+    print("uniqueJunctions after correction")
+    print(uniqueJunctions)
+    print(length(uniqueJunctions))
+    
     return(uniqueJunctions)
 }
 

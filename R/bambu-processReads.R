@@ -12,10 +12,11 @@
 #' @importFrom BiocParallel bplapply
 #' @importFrom BiocGenerics basename
 #' @noRd
-bambu.processReads <- function(reads, annotations, genomeSequence,
+bambu.processReads <- function(reads, annotations, genomeSequence, shortReads,
     readClass.outputDir=NULL, yieldSize=1000000, bpParameters, 
     stranded=FALSE, verbose=FALSE, isoreParameters = setIsoreParameters(NULL),
-    lowMemory=FALSE, trackReads = trackReads, fusionMode = fusionMode) {
+    lowMemory=FALSE, trackReads = trackReads, fusionMode = fusionMode,
+    combined = combined) {
     genomeSequence <- checkInputSequence(genomeSequence)
     # ===# create BamFileList object from character #===#
     if (is(reads, "BamFile")) {
@@ -47,11 +48,13 @@ bambu.processReads <- function(reads, annotations, genomeSequence,
     readClassList <- bplapply(names(reads), function(bamFileName) {
         bambu.processReadsByFile(bam.file = reads[bamFileName],
         genomeSequence = genomeSequence,annotations = annotations,
+        shortReads = shortReads,
         readClass.outputDir = readClass.outputDir,
         stranded = stranded, min.readCount = min.readCount, 
         fitReadClassModel = fitReadClassModel, min.exonOverlap = min.exonOverlap, 
         defaultModels = defaultModels, returnModel = returnModel, verbose = verbose, 
-        lowMemory = lowMemory, trackReads = trackReads, fusionMode = fusionMode)},
+        lowMemory = lowMemory, trackReads = trackReads, fusionMode = fusionMode,
+        combined = combined)},
         BPPARAM = bpParameters)
     return(readClassList)
 }
@@ -60,10 +63,11 @@ bambu.processReads <- function(reads, annotations, genomeSequence,
 #' @inheritParams bambu
 #' @importFrom GenomeInfoDb seqlevels seqlevels<- keepSeqlevels
 #' @noRd
-bambu.processReadsByFile <- function(bam.file, genomeSequence, annotations,
+bambu.processReadsByFile <- function(bam.file, genomeSequence, annotations, shortReads,
     readClass.outputDir = NULL, stranded = FALSE, min.readCount = 2, 
     fitReadClassModel = TRUE, min.exonOverlap = 10, defaultModels = NULL, returnModel = FALSE, 
-    verbose = FALSE, lowMemory = FALSE, trackReads = FALSE, fusionMode = FALSE) {
+    verbose = FALSE, lowMemory = FALSE, trackReads = FALSE, fusionMode = FALSE,
+    combined = combined) {
     if(verbose) message(names(bam.file)[1])
     readGrgList <- prepareDataFromBam(bam.file[[1]], verbose = verbose, use.names = trackReads)
     warnings = c()
@@ -119,8 +123,20 @@ bambu.processReadsByFile <- function(bam.file, genomeSequence, annotations,
             warnings = c(warnings, warningText)
             if (verbose) warning(warningText)
         }
-        uniqueJunctions <- isore.constructJunctionTables(unlisted_junctions, 
-                                                         annotations,genomeSequence, stranded = stranded, verbose = verbose)
+
+        print("in processReads")
+        print("before constructJunctionTables")
+        print(readGrgList)
+        print(length(readGrgList))
+        print(unlisted_junctions)
+        print(length(unlisted_junctions))
+
+        uniqueJunctions <- isore.constructJunctionTables(unlisted_junctions, annotations,
+                                                         shortReads, genomeSequence, stranded = stranded, verbose = verbose,
+                                                         combined = combined)
+
+        print("After constructJunctionTables")
+        print(uniqueJunctions)
         # create SE object with reconstructed readClasses
         se <- isore.constructReadClasses(readGrgList, unlisted_junctions, 
                                          uniqueJunctions, runName = names(bam.file)[1],

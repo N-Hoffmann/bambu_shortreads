@@ -135,14 +135,19 @@
 #' se <- bambu(reads = test.bam, annotations = gr, 
 #'     genome = fa.file,  discovery = TRUE, quant = TRUE)
 #' @export
-bambu <- function(reads, annotations = NULL, genome = NULL, NDR = NULL,
+bambu <- function(reads, annotations = NULL, genome = NULL, shortReads = NULL, NDR = NULL,
     opt.discovery = NULL, opt.em = NULL, rcOutDir = NULL, discovery = TRUE, 
     quant = TRUE, stranded = FALSE,  ncore = 1, yieldSize = NULL,  
     trackReads = FALSE, returnDistTable = FALSE, lowMemory = FALSE, 
-    fusionMode = FALSE, verbose = FALSE) {
+    fusionMode = FALSE, verbose = FALSE, 
+    combined = FALSE) {
     if(is.null(annotations)) { annotations = GRangesList()
     } else annotations <- checkInputs(annotations, reads,
             readClass.outputDir = rcOutDir, genomeSequence = genome)
+    
+    if (is.null(shortReads)) { shortReads = GRangesList()
+    } else shortReads <- prepareDataFromBam(shortReads, verbose = verbose)
+
     isoreParameters <- setIsoreParameters(isoreParameters = opt.discovery)
     #below line is to be compatible with earlier version of running bambu
     if(!is.null(isoreParameters$max.txNDR)) NDR = isoreParameters$max.txNDR
@@ -154,6 +159,7 @@ bambu <- function(reads, annotations = NULL, genome = NULL, NDR = NULL,
     readClassList = reads
     isRDSs = all(sapply(reads, class)=="RangedSummarizedExperiment")
     isBamFiles = !isRDSs
+
     if(!isRDSs) isBamFiles = ifelse(!is(reads, "BamFileList"), all(grepl(".bam$", reads)), FALSE)
     if (isBamFiles | is(reads, "BamFileList")) {
         if (length(reads) > 10 & (is.null(rcOutDir))) {
@@ -164,12 +170,13 @@ bambu <- function(reads, annotations = NULL, genome = NULL, NDR = NULL,
             rm.readClassSe <- TRUE # remove temporary read class files 
         }
         message("--- Start generating read class files ---")
-        readClassList <- bambu.processReads(reads, annotations, 
+        readClassList <- bambu.processReads(reads, annotations, shortReads,
             genomeSequence = genome, 
             readClass.outputDir = rcOutDir, yieldSize, 
             bpParameters, stranded, verbose,
             isoreParameters, trackReads = trackReads, fusionMode = fusionMode, 
-            lowMemory = lowMemory)
+            lowMemory = lowMemory,
+            combined = combined)
     }
     warnings = handleWarnings(readClassList, verbose)
     if (!discovery & !quant) return(readClassList)
