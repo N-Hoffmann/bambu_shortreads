@@ -13,14 +13,8 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
     start.ptm <- proc.time()
     if(length(unlisted_junctions)==0) return(NULL)
     #summarise junction counts and strand for all reads
-
-    print("in constructJunctionTables")
     uniqueJunctions <- createJunctionTable(unlisted_junctions,
         genomeSequence = genomeSequence)
-
-    print(uniqueJunctions)
-    print(length(uniqueJunctions))
-
     end.ptm <- proc.time()
     if (verbose) message("Finished creating junction list with splice motif ",
         "in ", round((end.ptm - start.ptm)[3] / 60, 1), " mins.")
@@ -55,11 +49,6 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
             annotatedStart, annotatedEnd)
     # correct junction coordinates using logistic regression classifier
     uniqueJunctions <- junctionErrorCorrection(uniqueJunctions, verbose)
-
-    print("uniqueJunctions after correction")
-    print(uniqueJunctions)
-    print(length(uniqueJunctions))
-    
     return(uniqueJunctions)
 }
 

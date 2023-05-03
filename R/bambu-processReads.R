@@ -124,19 +124,9 @@ bambu.processReadsByFile <- function(bam.file, genomeSequence, annotations, shor
             if (verbose) warning(warningText)
         }
 
-        print("in processReads")
-        print("before constructJunctionTables")
-        print(readGrgList)
-        print(length(readGrgList))
-        print(unlisted_junctions)
-        print(length(unlisted_junctions))
-
         uniqueJunctions <- isore.constructJunctionTables(unlisted_junctions, annotations,
                                                          shortReads, genomeSequence, stranded = stranded, verbose = verbose,
                                                          combined = combined)
-
-        print("After constructJunctionTables")
-        print(uniqueJunctions)
         # create SE object with reconstructed readClasses
         se <- isore.constructReadClasses(readGrgList, unlisted_junctions, 
                                          uniqueJunctions, runName = names(bam.file)[1],

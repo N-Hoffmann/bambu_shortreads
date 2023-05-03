@@ -6,15 +6,9 @@ junctionErrorCorrection <- function(uniqueJunctions, verbose) {
     start.ptm <- proc.time()
     if (sum(uniqueJunctions$annotatedJunction) > 5000 &
         sum(!uniqueJunctions$annotatedJunction) > 4000) {
-        uniqJunctionsNmodels <-
-            findUniqueJunctions(uniqueJunctions, NULL, verbose)
-        uniqueJunctions <- uniqJunctionsNmodels$uniqueJunctions
-        junctionModel <- uniqJunctionsNmodels$predictSpliceSites[[2]]
+        junctionModel <- (predictSpliceJunctions(uniqueJunctions, junctionModel = NULL, verbose = TRUE))[[2]]
     } else {
         junctionModel <- standardJunctionModels_temp
-        uniqJunctionsNmodels <-
-            findUniqueJunctions(uniqueJunctions, junctionModel, verbose)
-        uniqueJunctions <- uniqJunctionsNmodels$uniqueJunctions
         if(verbose) message("Junction correction with not enough data, ",
             "precalculated model is used")
     }
@@ -39,24 +33,6 @@ junctionErrorCorrection <- function(uniqueJunctions, verbose) {
             "junctions in ", round((end.ptm - start.ptm)[3] / 60, 1), " mins.")
     return(uniqueJunctions)
 }
-
-#' find unique junctions
-#' @noRd
-findUniqueJunctions <- function(uniqueJunctions, junctionModel, verbose){
-    predictSpliceSites <- predictSpliceJunctions(
-        annotatedJunctions = uniqueJunctions,
-        junctionModel = junctionModel,
-        verbose = verbose)
-    uniqueJunctions <- predictSpliceSites[[1]][, c(
-        "score", "spliceMotif",
-        "spliceStrand", "junctionStartName", "junctionEndName",
-        "startScore", "endScore", "annotatedJunction",
-        "annotatedStart", "annotatedEnd")]
-    return(list("uniqueJunctions" = uniqueJunctions, 
-                "predictSpliceSites" = predictSpliceSites))
-}
-
-
 
 #' Test splice sites
 #' @importFrom stats model.matrix
@@ -339,9 +315,13 @@ findHighConfidenceJunctions <- function(junctions, junctionModel,
         candidateJunctionsMinus$spliceStrand == '-'
     if (sum(highConfidentJunctionSetPlus) > 0 &
         sum(highConfidentJunctionSetMinus) > 0) {
+        print("junction Model before plus is")
+        print(junctionModel)
         candidateJunctionsPlus <-
             findJunctionsByStrand(candidateJunctionsPlus, 
                 highConfidentJunctionSetPlus, junctionModel, verbose)
+        print("junction model beforem minus is")
+        print(junctionModel)
         candidateJunctionsMinus <-
             findJunctionsByStrand(candidateJunctionsMinus, 
                 highConfidentJunctionSetMinus,junctionModel, verbose)
