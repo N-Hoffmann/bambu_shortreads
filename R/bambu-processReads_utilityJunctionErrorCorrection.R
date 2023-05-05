@@ -6,7 +6,8 @@ junctionErrorCorrection <- function(uniqueJunctions, verbose) {
     start.ptm <- proc.time()
     if (sum(uniqueJunctions$annotatedJunction) > 5000 &
         sum(!uniqueJunctions$annotatedJunction) > 4000) {
-        junctionModel <- (predictSpliceJunctions(uniqueJunctions, junctionModel = NULL, verbose = TRUE))[[2]]
+        junctionModel <- (predictSpliceJunctions(uniqueJunctions,
+            junctionModel = NULL, verbose = TRUE))[[2]]
     } else {
         junctionModel <- standardJunctionModels_temp
         if(verbose) message("Junction correction with not enough data, ",
@@ -315,13 +316,9 @@ findHighConfidenceJunctions <- function(junctions, junctionModel,
         candidateJunctionsMinus$spliceStrand == '-'
     if (sum(highConfidentJunctionSetPlus) > 0 &
         sum(highConfidentJunctionSetMinus) > 0) {
-        print("junction Model before plus is")
-        print(junctionModel)
         candidateJunctionsPlus <-
             findJunctionsByStrand(candidateJunctionsPlus, 
                 highConfidentJunctionSetPlus, junctionModel, verbose)
-        print("junction model beforem minus is")
-        print(junctionModel)
         candidateJunctionsMinus <-
             findJunctionsByStrand(candidateJunctionsMinus, 
                 highConfidentJunctionSetMinus,junctionModel, verbose)
