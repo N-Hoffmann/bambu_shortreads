@@ -70,7 +70,6 @@ constructSplicedReadClasses <- function(uniqueJunctions, unlisted_junctions,
         unlisted_junctions = unlisted_junctions[-toRemove]
         allToUniqueJunctionMatch = allToUniqueJunctionMatch[-toRemove]
     }
-
     if (isFALSE(stranded)) {
         readStrand <- correctReadStrandById(
             as.factor(strand(unlisted_junctions)),
@@ -108,26 +107,28 @@ correctIntronRanges <- function(unlisted_junctions, uniqueJunctions,
                                 correctedJunctionMatches){
     intronStartTMP <-
         start(uniqueJunctions)[correctedJunctionMatches]
-    
     intronEndTMP <-
         end(uniqueJunctions)[correctedJunctionMatches]
-    
     exon_0size <- 
         which(intronStartTMP[-1] <= intronEndTMP[-length(intronEndTMP)] &
                   mcols(unlisted_junctions)$id[-1] == 
                   mcols(unlisted_junctions)$id[-length(unlisted_junctions)])
+
+    ###stupid idea
+    TMPrange <- IRanges(start=intronStartTMP, end = intronEndTMP)
+    unlisted_junctions@ranges <- TMPrange
+
+    # start(unlisted_junctions) <- intronStartTMP
+    # end(unlisted_junctions) <- intronEndTMP
+    ###
     
-    start(unlisted_junctions) <- intronStartTMP
-    end(unlisted_junctions) <- intronEndTMP
     strand(unlisted_junctions) <-
         uniqueJunctions$strand.mergedHighConfJunction[correctedJunctionMatches]
-    
     #remove micro exons and adjust respective junctions
     start(unlisted_junctions)[exon_0size+1]=
         start(unlisted_junctions)[exon_0size]
     mcols(unlisted_junctions)$remove <- rep(FALSE, length(unlisted_junctions))
     mcols(unlisted_junctions)$remove[exon_0size] <- TRUE
-    
     return(unlisted_junctions)
 }
 

@@ -2,7 +2,7 @@
 #' @param uniqueJunctions uniqueJunctions
 #' @param verbose verbose
 #' @noRd
-junctionErrorCorrection <- function(uniqueJunctions, verbose) {
+junctionErrorCorrection <- function(uniqueJunctions, verbose, juncDist = 10) {
     start.ptm <- proc.time()
     if (sum(uniqueJunctions$annotatedJunction) > 5000 &
         sum(!uniqueJunctions$annotatedJunction) > 4000) {
@@ -19,7 +19,8 @@ junctionErrorCorrection <- function(uniqueJunctions, verbose) {
                 round((end.ptm - start.ptm)[3] / 60, 1), " mins.")
     start.ptm <- proc.time()
     uniqueJunctions <- findHighConfidenceJunctions(junctions = uniqueJunctions,
-        junctionModel = junctionModel, verbose = verbose)
+        junctionModel = junctionModel, verbose = verbose, 
+        juncDist)
     uniqueJunctions$mergedHighConfJunctionIdAll_noNA <- 
         uniqueJunctions$mergedHighConfJunctionId
     uniqueJunctions$mergedHighConfJunctionIdAll_noNA[
@@ -32,6 +33,7 @@ junctionErrorCorrection <- function(uniqueJunctions, verbose) {
     if (verbose) 
         message("Finished correcting junction based on set of high confidence ",
             "junctions in ", round((end.ptm - start.ptm)[3] / 60, 1), " mins.")
+    print("pass junctionErrorCorrection")
     return(uniqueJunctions)
 }
 
@@ -66,7 +68,7 @@ testSpliceSites <- function(data, splice = "Start", prime = "start",
         modelmatrix <- 
             model.matrix(~A.1+A.2+A.3+A.4+A.5, data = data.frame(myData))
         predSplice.prime <- NULL
-        if (is.null(junctionModel)) { 
+        if (is.null(junctionModel)) {
             model = fitXGBoostModel(labels.train = 
                 as.integer(annotatedSplice)[mySet.all][mySet.training], 
                 data.train = modelmatrix[mySet.training,],
@@ -254,7 +256,8 @@ useRefJunctionForConflict <- function(junctions, candidateJunctionsMinus,
 #' find junctions by plus and minus strand
 #' @noRd
 findJunctionsByStrand <- function(candidateJunctions,highConfidentJunctionSet,
-                                  junctionModel, verbose){
+                                  junctionModel, verbose,
+                                  juncDist = 10){
     highConfJunctions <- predictSpliceJunctions(candidateJunctions[
         which(highConfidentJunctionSet)], junctionModel = junctionModel)[[1]]
     candidateJunctions$highConfJunctionPrediction = rep(FALSE,
@@ -277,7 +280,8 @@ findJunctionsByStrand <- function(candidateJunctions,highConfidentJunctionSet,
     mergedHighConfJunctionId <- rep(NA,length(candidateJunctions))
     ##max Distance can be a parameter that can be set by users
     #here: assign reference junction to all junctions based on prediciton score
-    for (maxDist in 0:10) {
+    print(juncDist)
+    for (maxDist in 0:juncDist) {
         overlapByDist = findOverlaps(candidateJunctions[which(is.na(
             mergedHighConfJunctionId))], candidateJunctions[which(
                 candidateJunctions$highConfJunctionPrediction)],
@@ -296,7 +300,8 @@ findJunctionsByStrand <- function(candidateJunctions,highConfidentJunctionSet,
 #' each junction originates from
 #' @noRd
 findHighConfidenceJunctions <- function(junctions, junctionModel,
-                                        verbose = FALSE) {
+                                        verbose = FALSE,
+                                        juncDist = 10) {
     if (verbose) {
         message('reads count for all annotated junctions: ', 
         sum(junctions$score[junctions$annotatedJunction]),
@@ -318,10 +323,10 @@ findHighConfidenceJunctions <- function(junctions, junctionModel,
         sum(highConfidentJunctionSetMinus) > 0) {
         candidateJunctionsPlus <-
             findJunctionsByStrand(candidateJunctionsPlus, 
-                highConfidentJunctionSetPlus, junctionModel, verbose)
+                highConfidentJunctionSetPlus, junctionModel, verbose, juncDist)
         candidateJunctionsMinus <-
             findJunctionsByStrand(candidateJunctionsMinus, 
-                highConfidentJunctionSetMinus,junctionModel, verbose)
+                highConfidentJunctionSetMinus,junctionModel, verbose, juncDist)
         
         #if conflict (very rare) use ref junction with higher read count/score
         junctions <- useRefJunctionForConflict(junctions,

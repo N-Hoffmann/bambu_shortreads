@@ -16,7 +16,8 @@ bambu.processReads <- function(reads, annotations, genomeSequence, shortReads,
     readClass.outputDir=NULL, yieldSize=1000000, bpParameters, 
     stranded=FALSE, verbose=FALSE, isoreParameters = setIsoreParameters(NULL),
     lowMemory=FALSE, trackReads = trackReads, fusionMode = fusionMode,
-    combined = combined) {
+    combined = combined,
+    juncDist = 10) {
     genomeSequence <- checkInputSequence(genomeSequence)
     # ===# create BamFileList object from character #===#
     if (is(reads, "BamFile")) {
@@ -54,7 +55,8 @@ bambu.processReads <- function(reads, annotations, genomeSequence, shortReads,
         fitReadClassModel = fitReadClassModel, min.exonOverlap = min.exonOverlap, 
         defaultModels = defaultModels, returnModel = returnModel, verbose = verbose, 
         lowMemory = lowMemory, trackReads = trackReads, fusionMode = fusionMode,
-        combined = combined)},
+        combined = combined,
+        juncDist)},
         BPPARAM = bpParameters)
     return(readClassList)
 }
@@ -67,7 +69,8 @@ bambu.processReadsByFile <- function(bam.file, genomeSequence, annotations, shor
     readClass.outputDir = NULL, stranded = FALSE, min.readCount = 2, 
     fitReadClassModel = TRUE, min.exonOverlap = 10, defaultModels = NULL, returnModel = FALSE, 
     verbose = FALSE, lowMemory = FALSE, trackReads = FALSE, fusionMode = FALSE,
-    combined = combined) {
+    combined = combined,
+    juncDist = 10) {
     if(verbose) message(names(bam.file)[1])
     readGrgList <- prepareDataFromBam(bam.file[[1]], verbose = verbose, use.names = trackReads)
     warnings = c()
@@ -126,7 +129,8 @@ bambu.processReadsByFile <- function(bam.file, genomeSequence, annotations, shor
 
         uniqueJunctions <- isore.constructJunctionTables(unlisted_junctions, annotations,
                                                          shortReads, genomeSequence, stranded = stranded, verbose = verbose,
-                                                         combined = combined)
+                                                         combined = combined,
+                                                         juncDist)
         # create SE object with reconstructed readClasses
         se <- isore.constructReadClasses(readGrgList, unlisted_junctions, 
                                          uniqueJunctions, runName = names(bam.file)[1],
