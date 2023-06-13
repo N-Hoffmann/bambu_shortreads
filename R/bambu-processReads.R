@@ -17,7 +17,8 @@ bambu.processReads <- function(reads, annotations, genomeSequence, shortReads,
     stranded=FALSE, verbose=FALSE, isoreParameters = setIsoreParameters(NULL),
     lowMemory=FALSE, trackReads = trackReads, fusionMode = fusionMode,
     combined = combined,
-    juncDist = 10) {
+    juncDist = 10,
+    intron_limit = NULL) {
     genomeSequence <- checkInputSequence(genomeSequence)
     # ===# create BamFileList object from character #===#
     if (is(reads, "BamFile")) {
@@ -56,7 +57,8 @@ bambu.processReads <- function(reads, annotations, genomeSequence, shortReads,
         defaultModels = defaultModels, returnModel = returnModel, verbose = verbose, 
         lowMemory = lowMemory, trackReads = trackReads, fusionMode = fusionMode,
         combined = combined,
-        juncDist)},
+        juncDist,
+        intron_limit)},
         BPPARAM = bpParameters)
     return(readClassList)
 }
@@ -70,7 +72,8 @@ bambu.processReadsByFile <- function(bam.file, genomeSequence, annotations, shor
     fitReadClassModel = TRUE, min.exonOverlap = 10, defaultModels = NULL, returnModel = FALSE, 
     verbose = FALSE, lowMemory = FALSE, trackReads = FALSE, fusionMode = FALSE,
     combined = combined,
-    juncDist = 10) {
+    juncDist = 10,
+    intron_limit = NULL) {
     if(verbose) message(names(bam.file)[1])
     readGrgList <- prepareDataFromBam(bam.file[[1]], verbose = verbose, use.names = trackReads)
     warnings = c()
@@ -130,7 +133,8 @@ bambu.processReadsByFile <- function(bam.file, genomeSequence, annotations, shor
         uniqueJunctions <- isore.constructJunctionTables(unlisted_junctions, annotations,
                                                          shortReads, genomeSequence, stranded = stranded, verbose = verbose,
                                                          combined = combined,
-                                                         juncDist)
+                                                         juncDist,
+                                                         intron_limit)
         # create SE object with reconstructed readClasses
         se <- isore.constructReadClasses(readGrgList, unlisted_junctions, 
                                          uniqueJunctions, runName = names(bam.file)[1],

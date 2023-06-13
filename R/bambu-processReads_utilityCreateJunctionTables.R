@@ -10,7 +10,8 @@
 #' @noRd
 isore.constructJunctionTables <- function(unlisted_junctions, annotations, shortReads,
     genomeSequence, stranded = FALSE, verbose = FALSE, combined = FALSE,
-    juncDist = 10) {
+    juncDist = 10,
+    intron_limit = NULL) {
     start.ptm <- proc.time()
     if(length(unlisted_junctions)==0) return(NULL)
     #summarise junction counts and strand for all reads
@@ -24,13 +25,16 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
         use.ids = FALSE))
 
     if (length(shortReads) > 0){
-        print("Using shortReads for correction")
+        message("Using shortReads for correction")
         uniqueShortReadsIntrons <- unique(unlistIntrons(shortReads, use.ids = FALSE))
+        if (!is.null(intron_limit)){
+            uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(uniqueShortReadsIntrons@ranges@width >= intron_limit)),]
+        }
         if(combined == TRUE){
-            print("Using combination of shortReads and Annotations")
+            message("Using combination of shortReads and Annotations")
             uniqueAnnotatedIntrons <- SparseSummarizedExperiment::combine(uniqueShortReadsIntrons, uniqueAnnotatedIntrons)
         } else{
-        print("Using shortReads only as annotations")
+        message("Using shortReads only as annotations")
         uniqueAnnotatedIntrons <- uniqueShortReadsIntrons
         }
     }

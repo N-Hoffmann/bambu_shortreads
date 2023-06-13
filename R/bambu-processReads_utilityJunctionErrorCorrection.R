@@ -33,7 +33,6 @@ junctionErrorCorrection <- function(uniqueJunctions, verbose, juncDist = 10) {
     if (verbose) 
         message("Finished correcting junction based on set of high confidence ",
             "junctions in ", round((end.ptm - start.ptm)[3] / 60, 1), " mins.")
-    print("pass junctionErrorCorrection")
     return(uniqueJunctions)
 }
 
@@ -280,7 +279,6 @@ findJunctionsByStrand <- function(candidateJunctions,highConfidentJunctionSet,
     mergedHighConfJunctionId <- rep(NA,length(candidateJunctions))
     ##max Distance can be a parameter that can be set by users
     #here: assign reference junction to all junctions based on prediciton score
-    print(juncDist)
     for (maxDist in 0:juncDist) {
         overlapByDist = findOverlaps(candidateJunctions[which(is.na(
             mergedHighConfJunctionId))], candidateJunctions[which(
