@@ -143,6 +143,7 @@ bambu <- function(reads, annotations = NULL, genome = NULL, shortReads = NULL, N
     combined = FALSE,
     juncDist = 10,
     intron_limit = NULL) {
+    #Raise Value Error if juncDist = 0
     if(is.null(annotations)) { annotations = GRangesList()
     } else annotations <- checkInputs(annotations, reads,
             readClass.outputDir = rcOutDir, genomeSequence = genome)

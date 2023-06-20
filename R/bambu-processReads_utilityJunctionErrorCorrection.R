@@ -21,6 +21,7 @@ junctionErrorCorrection <- function(uniqueJunctions, verbose, juncDist = 10) {
     uniqueJunctions <- findHighConfidenceJunctions(junctions = uniqueJunctions,
         junctionModel = junctionModel, verbose = verbose, 
         juncDist)
+    assign("uniqueJunctions", uniqueJunctions, globalenv())
     uniqueJunctions$mergedHighConfJunctionIdAll_noNA <- 
         uniqueJunctions$mergedHighConfJunctionId
     uniqueJunctions$mergedHighConfJunctionIdAll_noNA[
@@ -279,6 +280,8 @@ findJunctionsByStrand <- function(candidateJunctions,highConfidentJunctionSet,
     mergedHighConfJunctionId <- rep(NA,length(candidateJunctions))
     ##max Distance can be a parameter that can be set by users
     #here: assign reference junction to all junctions based on prediciton score
+    #Assigned new juncDist parameter
+    
     for (maxDist in 0:juncDist) {
         overlapByDist = findOverlaps(candidateJunctions[which(is.na(
             mergedHighConfJunctionId))], candidateJunctions[which(

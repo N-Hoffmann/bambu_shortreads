@@ -24,9 +24,26 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
     uniqueAnnotatedIntrons <- unique(unlistIntrons(annotations, 
         use.ids = FALSE))
 
+    assign("uniqueAnnotatedIntrons", uniqueAnnotatedIntrons, globalenv())
+
     if (length(shortReads) > 0){
         message("Using shortReads for correction")
         uniqueShortReadsIntrons <- unique(unlistIntrons(shortReads, use.ids = FALSE))
+        #Filtering short read introns below minimum reference width
+        uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(uniqueShortReadsIntrons@ranges@width < 70)),]
+
+        #Filtering short read introns with low short read read support
+        rawbam <- GenomicAlignments::readGAlignments("chrIS_shortreads.bam")
+        raw_juncs <- data.frame(GenomicAlignments::summarizeJunctions(rawbam))
+        rm(rawbam)
+        sr_exclusive_df <- data.frame(anti_join(raw_juncs, data.frame(uniqueAnnotatedIntrons)))
+        x <- left_join(data.frame(uniqueShortReadsIntrons), sr_exclusive_df[,-5])
+        uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-which(x$score < 5 ),]
+
+        print("passes ?")
+        assign("uniqueShortReadsIntrons" , uniqueShortReadsIntrons, globalenv())
+
+        #Filtering short read introns above a maximum intron width
         if (!is.null(intron_limit)){
             uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(uniqueShortReadsIntrons@ranges@width >= intron_limit)),]
         }
@@ -38,7 +55,6 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
         uniqueAnnotatedIntrons <- uniqueShortReadsIntrons
         }
     }
-    
     # correct strand of junctions based on (inferred) strand of reads
     strand(uniqueJunctions) <- junctionStrandCorrection(uniqueJunctions,
         unlisted_junctions, uniqueAnnotatedIntrons,

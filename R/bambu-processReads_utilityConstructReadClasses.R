@@ -89,8 +89,9 @@ constructSplicedReadClasses <- function(uniqueJunctions, unlisted_junctions,
     readTable <- createReadTable(start(unlisted_junctions), 
         end(unlisted_junctions), mcols(unlisted_junctions)$id, readGrgList,
         readStrand, readConfidence)
-
-    assign("readTable", readTable, globalenv())
+    
+    #Removing low confidence junctions
+    readTable <- readTable %>% dplyr::filter(confidenceType == "highConfidenceJunctionReads")
 
     exonsByReadClass <- createExonsByReadClass(readTable)
     readTable <- readTable %>% dplyr::select(chr.rc = chr, strand.rc = strand,
@@ -116,15 +117,27 @@ correctIntronRanges <- function(unlisted_junctions, uniqueJunctions,
         which(intronStartTMP[-1] <= intronEndTMP[-length(intronEndTMP)] &
                   mcols(unlisted_junctions)$id[-1] == 
                   mcols(unlisted_junctions)$id[-length(unlisted_junctions)])
-    ###Create temporary IRanges and replace in unlisted_junctions
+
+    #Create temporary IRanges and correct ranges in unlisted_junctions
     TMPrange <- IRanges(start=intronStartTMP, end = intronEndTMP)
     unlisted_junctions@ranges <- TMPrange
-
     strand(unlisted_junctions) <-
         uniqueJunctions$strand.mergedHighConfJunction[correctedJunctionMatches]
     #remove micro exons and adjust respective junctions
-    start(unlisted_junctions)[exon_0size+1]=
-        start(unlisted_junctions)[exon_0size]
+    assign("exon_0size", exon_0size, globalenv())
+    assign("unlisted_junctions", unlisted_junctions, globalenv())
+    for(i in exon_0size){
+        if (start(unlisted_junctions)[i+1] >= start(unlisted_junctions)[i]) {
+            start(unlisted_junctions)[i+1]=start(unlisted_junctions)[i]
+        }
+    }
+
+
+    # to_correct <- which(start(unlisted_junctions[exon_0size+1]) > start(unlisted_junctions[exon_0size]))
+    # start(unlisted_junctions)[exon_0size+1][to_correct] = start(unlisted_junctions)[exon_0size][to_correct]
+
+    # start(unlisted_junctions)[exon_0size+1]=
+    #     start(unlisted_junctions)[exon_0size]
     mcols(unlisted_junctions)$remove <- FALSE
     mcols(unlisted_junctions)$remove[exon_0size] <- TRUE
     return(unlisted_junctions)
