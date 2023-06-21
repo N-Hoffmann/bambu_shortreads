@@ -24,29 +24,28 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
     uniqueAnnotatedIntrons <- unique(unlistIntrons(annotations, 
         use.ids = FALSE))
 
-    assign("uniqueAnnotatedIntrons", uniqueAnnotatedIntrons, globalenv())
-
+    #Correction with short reads
     if (length(shortReads) > 0){
         message("Using shortReads for correction")
         uniqueShortReadsIntrons <- unique(unlistIntrons(shortReads, use.ids = FALSE))
         #Filtering short read introns below minimum reference width
         uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(uniqueShortReadsIntrons@ranges@width < 70)),]
-
         #Filtering short read introns with low short read read support
-        rawbam <- GenomicAlignments::readGAlignments("chrIS_shortreads.bam")
+        rawbam <- GenomicAlignments::readGAlignments("chrIS_shortreads.bam", param = ScanBamParam(flag = scanBamFlag(isSecondaryAlignment = FALSE)))
         raw_juncs <- data.frame(GenomicAlignments::summarizeJunctions(rawbam))
         rm(rawbam)
         sr_exclusive_df <- data.frame(anti_join(raw_juncs, data.frame(uniqueAnnotatedIntrons)))
         x <- left_join(data.frame(uniqueShortReadsIntrons), sr_exclusive_df[,-5])
         uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-which(x$score < 5 ),]
-
-        print("passes ?")
-        assign("uniqueShortReadsIntrons" , uniqueShortReadsIntrons, globalenv())
-
         #Filtering short read introns above a maximum intron width
         if (!is.null(intron_limit)){
             uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(uniqueShortReadsIntrons@ranges@width >= intron_limit)),]
         }
+        #Filtering non canonical splice sites
+        uniqueShortReadsIntrons <- get_splice(uniqueShortReadsIntrons)
+        uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(mcols(uniqueShortReadsIntrons)$splice != "GTAG")),]
+        mcols(uniqueShortReadsIntrons) <- NULL
+
         if(combined == TRUE){
             message("Using combination of shortReads and Annotations")
             uniqueAnnotatedIntrons <- SparseSummarizedExperiment::combine(uniqueShortReadsIntrons, uniqueAnnotatedIntrons)
@@ -55,6 +54,8 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
         uniqueAnnotatedIntrons <- uniqueShortReadsIntrons
         }
     }
+    # end of correction with short reads
+
     # correct strand of junctions based on (inferred) strand of reads
     strand(uniqueJunctions) <- junctionStrandCorrection(uniqueJunctions,
         unlisted_junctions, uniqueAnnotatedIntrons,
@@ -278,3 +279,15 @@ updateJunctionwimprove <- function(annotatedIntronNumber, uniqueJunctions,
     return(outputList)    
 }
 
+#'update shortReadsGranges object with splice sites
+#' to metadata
+get_splice <- function(shortReadsGranges){
+    #TODO add variable path to .fa
+    gen <- FaFile("chrIS_fasta.fa")
+    junction_start <- getSeq(fa,
+                         resize(shortReadsGranges, width = 2, fix='start'))
+    junction_end <- getSeq(fa,
+                         resize(shortReadsGranges, width = 2, fix='end'))
+    mcols(shortReadsGranges)$splice <- paste(junction_start, junction_end, sep = "")
+    return(shortReadsGranges)
+}
