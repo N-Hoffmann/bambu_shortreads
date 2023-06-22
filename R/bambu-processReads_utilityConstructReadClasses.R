@@ -62,8 +62,10 @@ constructSplicedReadClasses <- function(uniqueJunctions, unlisted_junctions,
     correctedJunctionMatches <- 
         base::match(uniqueJunctions$mergedHighConfJunctionIdAll_noNA[
             allToUniqueJunctionMatch], names(uniqueJunctions))
+    assign("unlisted_junctions_before_correction",unlisted_junctions, globalenv())
     unlisted_junctions <- correctIntronRanges(unlisted_junctions, 
         uniqueJunctions, correctedJunctionMatches)
+    assign("unlisted_junctions_after_correction",unlisted_junctions, globalenv())
     rm(correctedJunctionMatches)
     if(any(mcols(unlisted_junctions)$remove)){  # remove microexons
         toRemove = which(mcols(unlisted_junctions)$remove)
@@ -86,9 +88,13 @@ constructSplicedReadClasses <- function(uniqueJunctions, unlisted_junctions,
         mcols(unlisted_junctions)$id))) > 0)
     readConfidence[lowConfidenceReads] <- "lowConfidenceJunctionReads"
     rm(lowConfidenceReads, uniqueJunctions, allToUniqueJunctionMatch)
+
+    #Adding junctionID metadatacolumn
+    mcols(unlisted_junctions)$junctionID = 1:length(unlisted_junctions)
+
     readTable <- createReadTable(start(unlisted_junctions), 
         end(unlisted_junctions), mcols(unlisted_junctions)$id, readGrgList,
-        readStrand, readConfidence)
+        readStrand, readConfidence,mcols(unlisted_junctions)$junctionID)
     
     #Removing low confidence junctions
     readTable <- readTable %>% dplyr::filter(confidenceType == "highConfidenceJunctionReads")
@@ -97,9 +103,10 @@ constructSplicedReadClasses <- function(uniqueJunctions, unlisted_junctions,
     readTable <- readTable %>% dplyr::select(chr.rc = chr, strand.rc = strand,
         startSD = startSD, endSD = endSD, 
         readCount.posStrand = readCount.posStrand, intronStarts, intronEnds, 
-        confidenceType, readCount, readIds)
+        confidenceType, readCount, readIds, junctionIDs)
     mcols(exonsByReadClass) <- readTable
     options(scipen = 0)
+    assign("exonsByReadClass", exonsByReadClass, globalenv())
     return(exonsByReadClass)
 }
 
@@ -124,8 +131,6 @@ correctIntronRanges <- function(unlisted_junctions, uniqueJunctions,
     strand(unlisted_junctions) <-
         uniqueJunctions$strand.mergedHighConfJunction[correctedJunctionMatches]
     #remove micro exons and adjust respective junctions
-    assign("exon_0size", exon_0size, globalenv())
-    assign("unlisted_junctions", unlisted_junctions, globalenv())
     for(i in exon_0size){
         if (start(unlisted_junctions)[i+1] >= start(unlisted_junctions)[i]) {
             start(unlisted_junctions)[i+1]=start(unlisted_junctions)[i]
@@ -169,7 +174,7 @@ correctReadStrandById <- function(strand, id, stranded = FALSE){
 #'     row_number .groups
 #' @noRd
 createReadTable <- function(unlisted_junctions_start, unlisted_junctions_end, 
-    unlisted_junctions_id, readGrgList,readStrand, readConfidence) {
+    unlisted_junctions_id, readGrgList,readStrand, readConfidence,unlisted_junctions_juncID) {
     readRanges <- unlist(range(ranges(readGrgList)), use.names = FALSE)
     intronStartCoordinatesInt <- 
         as.integer(min(splitAsList(unlisted_junctions_start,
@@ -188,7 +193,11 @@ createReadTable <- function(unlisted_junctions_start, unlisted_junctions_end,
         end = pmax(end(readRanges), intronEndCoordinatesInt),
         strand = readStrand, confidenceType = readConfidence,
         alignmentStrand = as.character(getStrandFromGrList(readGrgList))=='+',
-        readId = mcols(readGrgList)$id)
+        readId = mcols(readGrgList)$id,
+        #Adding junctionID
+        junctionID = 
+        unname(unstrsplit(splitAsList(as.character(unlisted_junctions_juncID),
+            unlisted_junctions_id), sep = ",")))        
     rm(readRanges, readStrand, unlisted_junctions_start, 
         unlisted_junctions_end, unlisted_junctions_id, readConfidence, 
         intronStartCoordinatesInt, intronEndCoordinatesInt)
@@ -199,6 +208,7 @@ createReadTable <- function(unlisted_junctions_start, unlisted_junctions_end,
                 start = nth(x = start, n = ceiling(readCount / 5), order_by = start),
                 end = nth(x = end, n = ceiling(readCount / 1.25), order_by = end), 
                 readCount.posStrand = sum(alignmentStrand, na.rm = TRUE), readIds = list(readId),
+                junctionIDs = list(junctionID),
                 .groups = 'drop') %>% 
         arrange(chr, start, end) %>%
         mutate(readClassId = paste("rc", row_number(), sep = "."))

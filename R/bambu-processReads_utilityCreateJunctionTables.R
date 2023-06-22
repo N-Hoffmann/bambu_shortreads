@@ -24,7 +24,7 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
     uniqueAnnotatedIntrons <- unique(unlistIntrons(annotations, 
         use.ids = FALSE))
 
-    #Correction with short reads
+    #Processing short reads
     if (length(shortReads) > 0){
         message("Using shortReads for correction")
         uniqueShortReadsIntrons <- unique(unlistIntrons(shortReads, use.ids = FALSE))
@@ -36,12 +36,12 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
         rm(rawbam)
         sr_exclusive_df <- data.frame(anti_join(raw_juncs, data.frame(uniqueAnnotatedIntrons)))
         x <- left_join(data.frame(uniqueShortReadsIntrons), sr_exclusive_df[,-5])
-        uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-which(x$score < 5 ),]
+        uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-which(x$score < 5 ),] #score set to 5, can be changed
         #Filtering short read introns above a maximum intron width
         if (!is.null(intron_limit)){
             uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(uniqueShortReadsIntrons@ranges@width >= intron_limit)),]
         }
-        #Filtering non canonical splice sites
+        #Filtering introns with non canonical splice sites
         uniqueShortReadsIntrons <- get_splice(uniqueShortReadsIntrons)
         uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(mcols(uniqueShortReadsIntrons)$splice != "GTAG")),]
         mcols(uniqueShortReadsIntrons) <- NULL
@@ -54,7 +54,7 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
         uniqueAnnotatedIntrons <- uniqueShortReadsIntrons
         }
     }
-    # end of correction with short reads
+    # end of short read processing
 
     # correct strand of junctions based on (inferred) strand of reads
     strand(uniqueJunctions) <- junctionStrandCorrection(uniqueJunctions,
@@ -283,7 +283,7 @@ updateJunctionwimprove <- function(annotatedIntronNumber, uniqueJunctions,
 #' to metadata
 get_splice <- function(shortReadsGranges){
     #TODO add variable path to .fa
-    gen <- FaFile("chrIS_fasta.fa")
+    fa <- FaFile("chrIS_fasta.fa")
     junction_start <- getSeq(fa,
                          resize(shortReadsGranges, width = 2, fix='start'))
     junction_end <- getSeq(fa,
