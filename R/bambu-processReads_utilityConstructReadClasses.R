@@ -62,10 +62,16 @@ constructSplicedReadClasses <- function(uniqueJunctions, unlisted_junctions,
     correctedJunctionMatches <- 
         base::match(uniqueJunctions$mergedHighConfJunctionIdAll_noNA[
             allToUniqueJunctionMatch], names(uniqueJunctions))
+
+    #Giving junctionID
+    mcols(unlisted_junctions)$juncID <- 1:length(unlisted_junctions)
     assign("unlisted_junctions_before_correction",unlisted_junctions, globalenv())
+
     unlisted_junctions <- correctIntronRanges(unlisted_junctions, 
         uniqueJunctions, correctedJunctionMatches)
-    assign("unlisted_junctions_after_correction",unlisted_junctions, globalenv())
+
+    assign("unlisted_junctions_after_correction_Ranges",unlisted_junctions, globalenv())
+
     rm(correctedJunctionMatches)
     if(any(mcols(unlisted_junctions)$remove)){  # remove microexons
         toRemove = which(mcols(unlisted_junctions)$remove)
@@ -79,6 +85,9 @@ constructSplicedReadClasses <- function(uniqueJunctions, unlisted_junctions,
     } else {
         readStrand <- as.factor(getStrandFromGrList(readGrgList))
     }
+
+    assign("unlisted_junctions_after_correction_strand",unlisted_junctions, globalenv())
+
     # confidence type (note: can be changed to integer encoding)
     readConfidence <- factor(rep("highConfidenceJunctionReads",
         length(readStrand)), levels = c('highConfidenceJunctionReads',
@@ -87,15 +96,17 @@ constructSplicedReadClasses <- function(uniqueJunctions, unlisted_junctions,
         uniqueJunctions$mergedHighConfJunctionId[allToUniqueJunctionMatch],
         mcols(unlisted_junctions)$id))) > 0)
     readConfidence[lowConfidenceReads] <- "lowConfidenceJunctionReads"
-    rm(lowConfidenceReads, uniqueJunctions, allToUniqueJunctionMatch)
 
+    assign("readConfidence", readConfidence, globalenv())
+
+    rm(lowConfidenceReads, uniqueJunctions, allToUniqueJunctionMatch)
     #Adding junctionID metadatacolumn
     mcols(unlisted_junctions)$junctionID = 1:length(unlisted_junctions)
-
     readTable <- createReadTable(start(unlisted_junctions), 
         end(unlisted_junctions), mcols(unlisted_junctions)$id, readGrgList,
         readStrand, readConfidence,mcols(unlisted_junctions)$junctionID)
-    
+    assign("readTable",readTable,globalenv())
+
     #Removing low confidence junctions
     readTable <- readTable %>% dplyr::filter(confidenceType == "highConfidenceJunctionReads")
 
@@ -105,8 +116,22 @@ constructSplicedReadClasses <- function(uniqueJunctions, unlisted_junctions,
         readCount.posStrand = readCount.posStrand, intronStarts, intronEnds, 
         confidenceType, readCount, readIds, junctionIDs)
     mcols(exonsByReadClass) <- readTable
+
+    #junctionID tracking
+    #Creates dataframe with junctionID from all reads in a read class
+    a <- bambu:::myGaps(exonsByReadClass)
+    mcols(a)$junctionIDs = mcols(exonsByReadClass)$junctionIDs
+    for(i in 1:nrow(mcols(a))){
+        x = mcols(a)@listData[["junctionIDs"]][[i]]
+        y = paste(x, collapse=",")
+        z = strsplit(y,split=",")
+        final=as.numeric(unlist(z))
+        mcols(a)@listData[["junctionIDs"]][[i]] <- final
+    }
+    assign("idTrack", a ,globalenv())
+
+    assign("readTable",readTable,globalenv())
     options(scipen = 0)
-    assign("exonsByReadClass", exonsByReadClass, globalenv())
     return(exonsByReadClass)
 }
 
@@ -124,25 +149,30 @@ correctIntronRanges <- function(unlisted_junctions, uniqueJunctions,
         which(intronStartTMP[-1] <= intronEndTMP[-length(intronEndTMP)] &
                   mcols(unlisted_junctions)$id[-1] == 
                   mcols(unlisted_junctions)$id[-length(unlisted_junctions)])
-
     #Create temporary IRanges and correct ranges in unlisted_junctions
     TMPrange <- IRanges(start=intronStartTMP, end = intronEndTMP)
     unlisted_junctions@ranges <- TMPrange
+    
     strand(unlisted_junctions) <-
         uniqueJunctions$strand.mergedHighConfJunction[correctedJunctionMatches]
     #remove micro exons and adjust respective junctions
-    for(i in exon_0size){
-        if (start(unlisted_junctions)[i+1] >= start(unlisted_junctions)[i]) {
-            start(unlisted_junctions)[i+1]=start(unlisted_junctions)[i]
-        }
-    }
 
+    # For implementation
+    # for(i in exon_0size){
+    #     if (start(unlisted_junctions)[i+1] >= start(unlisted_junctions)[i]) {
+    #         start(unlisted_junctions)[i+1]=start(unlisted_junctions)[i]
+    #     }
+    # }
 
-    # to_correct <- which(start(unlisted_junctions[exon_0size+1]) > start(unlisted_junctions[exon_0size]))
-    # start(unlisted_junctions)[exon_0size+1][to_correct] = start(unlisted_junctions)[exon_0size][to_correct]
+    #bugs
+    #This breaks createExonByReadClass
+    to_correct <- start(unlisted_junctions[exon_0size+1]) >= start(unlisted_junctions)[exon_0size]
+    start(unlisted_junctions)[exon_0size[to_correct] + 1] = start(unlisted_junctions)[exon_0size[to_correct]] 
 
+    # OG : This one doesn't work anymore
     # start(unlisted_junctions)[exon_0size+1]=
     #     start(unlisted_junctions)[exon_0size]
+
     mcols(unlisted_junctions)$remove <- FALSE
     mcols(unlisted_junctions)$remove[exon_0size] <- TRUE
     return(unlisted_junctions)
@@ -197,7 +227,7 @@ createReadTable <- function(unlisted_junctions_start, unlisted_junctions_end,
         #Adding junctionID
         junctionID = 
         unname(unstrsplit(splitAsList(as.character(unlisted_junctions_juncID),
-            unlisted_junctions_id), sep = ",")))        
+            unlisted_junctions_id), sep = ",")))
     rm(readRanges, readStrand, unlisted_junctions_start, 
         unlisted_junctions_end, unlisted_junctions_id, readConfidence, 
         intronStartCoordinatesInt, intronEndCoordinatesInt)

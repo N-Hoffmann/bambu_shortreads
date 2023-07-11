@@ -143,14 +143,12 @@ bambu <- function(reads, annotations = NULL, genome = NULL, shortReads = NULL, N
     combined = FALSE,
     juncDist = 10,
     intron_limit = NULL) {
-    #Raise Value Error if juncDist = 0
+    #TODO Raise Value Error if juncDist = 0
     if(is.null(annotations)) { annotations = GRangesList()
     } else annotations <- checkInputs(annotations, reads,
             readClass.outputDir = rcOutDir, genomeSequence = genome)
-    
     if (is.null(shortReads)) { shortReads = GRangesList()
     } else shortReads <- prepareDataFromBam(shortReads, verbose = verbose)
-
     isoreParameters <- setIsoreParameters(isoreParameters = opt.discovery)
     #below line is to be compatible with earlier version of running bambu
     if(!is.null(isoreParameters$max.txNDR)) NDR = isoreParameters$max.txNDR

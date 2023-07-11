@@ -28,10 +28,13 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
     if (length(shortReads) > 0){
         message("Using shortReads for correction")
         uniqueShortReadsIntrons <- unique(unlistIntrons(shortReads, use.ids = FALSE))
+        assign("uniqueShortReadsIntrons", uniqueShortReadsIntrons, globalenv())
+        assign("uniqueAnnotatedIntrons",uniqueAnnotatedIntrons, globalenv())
         #Filtering short read introns below minimum reference width
         uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(uniqueShortReadsIntrons@ranges@width < 70)),]
-        #Filtering short read introns with low short read read support
+        #Filtering short read introns with low short read support
         rawbam <- GenomicAlignments::readGAlignments("chrIS_shortreads.bam", param = ScanBamParam(flag = scanBamFlag(isSecondaryAlignment = FALSE)))
+        #rawbam <- GenomicAlignments::readGAlignments("SGNex_Hct116_Illumina_replicate3_run1.bam", param = ScanBamParam(flag = scanBamFlag(isSecondaryAlignment = FALSE)))
         raw_juncs <- data.frame(GenomicAlignments::summarizeJunctions(rawbam))
         rm(rawbam)
         sr_exclusive_df <- data.frame(anti_join(raw_juncs, data.frame(uniqueAnnotatedIntrons)))
@@ -41,10 +44,10 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
         if (!is.null(intron_limit)){
             uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(uniqueShortReadsIntrons@ranges@width >= intron_limit)),]
         }
-        #Filtering introns with non canonical splice sites
-        uniqueShortReadsIntrons <- get_splice(uniqueShortReadsIntrons)
-        uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(mcols(uniqueShortReadsIntrons)$splice != "GTAG")),]
-        mcols(uniqueShortReadsIntrons) <- NULL
+        # #Filtering introns with non canonical splice sites
+        # uniqueShortReadsIntrons <- get_splice(uniqueShortReadsIntrons)
+        # uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(mcols(uniqueShortReadsIntrons)$splice != "GTAG")),]
+        # mcols(uniqueShortReadsIntrons) <- NULL
 
         if(combined == TRUE){
             message("Using combination of shortReads and Annotations")
@@ -283,6 +286,7 @@ updateJunctionwimprove <- function(annotatedIntronNumber, uniqueJunctions,
 #' to metadata
 get_splice <- function(shortReadsGranges){
     #TODO add variable path to .fa
+    #fa <- FaFile("hg38_sequins_SIRV_ERCCs_longSIRVs.fa")
     fa <- FaFile("chrIS_fasta.fa")
     junction_start <- getSeq(fa,
                          resize(shortReadsGranges, width = 2, fix='start'))
