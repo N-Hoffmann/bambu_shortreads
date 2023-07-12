@@ -172,6 +172,8 @@ predictSpliceJunctions <- function(annotatedJunctions, junctionModel=NULL,
                 splice,'.',prime)]] <- preds[[splice]][[prime]]$predsJ
             }}}
     if (is.null(junctionModel)) junctionModel <- junctionModelList
+    assign("junctionModel",junctionModel, globalenv())
+    assign("preds",preds,globalenv())
     return(list(annotatedJunctions, junctionModel))
 }
 

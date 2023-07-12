@@ -29,7 +29,7 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
         message("Using shortReads for correction")
         uniqueShortReadsIntrons <- unique(unlistIntrons(shortReads, use.ids = FALSE))
         assign("uniqueShortReadsIntrons", uniqueShortReadsIntrons, globalenv())
-        assign("uniqueAnnotatedIntrons",uniqueAnnotatedIntrons, globalenv())
+        #assign("uniqueAnnotatedIntrons",uniqueAnnotatedIntrons, globalenv())
         #Filtering short read introns below minimum reference width
         uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(uniqueShortReadsIntrons@ranges@width < 70)),]
         #Filtering short read introns with low short read support
@@ -51,7 +51,22 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
 
         if(combined == TRUE){
             message("Using combination of shortReads and Annotations")
-            uniqueAnnotatedIntrons <- SparseSummarizedExperiment::combine(uniqueShortReadsIntrons, uniqueAnnotatedIntrons)
+            #uniqueAnnotatedIntrons <- SparseSummarizedExperiment::combine(uniqueShortReadsIntrons, uniqueAnnotatedIntrons)
+            
+            #Assigning origin of junction when using combination of shortreads and annotation
+            combined_df <- data.frame(SparseSummarizedExperiment::combine(uniqueShortReadsIntrons, uniqueAnnotatedIntrons))
+            anno_exclusive <- anti_join(combined_df, data.frame(uniqueShortReadsIntrons))
+            anno_exclusive$source = "Annotation"
+            sr_exclusive <- anti_join(combined_df, data.frame(uniqueAnnotatedIntrons))
+            sr_exclusive$source = "ShortReads"
+            both <- semi_join(data.frame(uniqueShortReadsIntrons), data.frame(uniqueAnnotatedIntrons))
+            both$source = "Both"
+            sources <- c(anno_exclusive$source, sr_exclusive$source, both$source)
+            df_list <- list(anno_exclusive[,1:5], sr_exclusive[,1:5], both[,1:5])
+            rebuild_df <- (df_list %>% purrr::reduce(full_join))
+            uniqueAnnotatedIntrons <- makeGRangesFromDataFrame(rebuild_df)
+            mcols(uniqueAnnotatedIntrons)$source = sources
+            assign("uniqueAnnotatedIntrons", uniqueAnnotatedIntrons, globalenv())
         } else{
         message("Using shortReads only as annotations")
         uniqueAnnotatedIntrons <- uniqueShortReadsIntrons
