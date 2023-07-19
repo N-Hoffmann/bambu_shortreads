@@ -4,15 +4,22 @@
 #' @noRd
 junctionErrorCorrection <- function(uniqueJunctions, verbose, juncDist = 10) {
     start.ptm <- proc.time()
+    assign("uniqueJunctions_start",uniqueJunctions,globalenv())
     if (sum(uniqueJunctions$annotatedJunction) > 5000 &
         sum(!uniqueJunctions$annotatedJunction) > 4000) {
+        print("a")
         junctionModel <- (predictSpliceJunctions(uniqueJunctions,
             junctionModel = NULL, verbose = TRUE))[[2]]
     } else {
-        junctionModel <- standardJunctionModels_temp
-        if(verbose) message("Junction correction with not enough data, ",
-            "precalculated model is used")
+        #force to use non standard model
+        junctionModel <- (predictSpliceJunctions(uniqueJunctions,
+            junctionModel = NULL, verbose = TRUE))[[2]]
+        # junctionModel <- standardJunctionModels_temp
+        # if(verbose) message("Junction correction with not enough data, ",
+        #     "precalculated model is used")
+        #remove after
     }
+    assign("junctionModel",junctionModel, globalenv())
     end.ptm <- proc.time()
     if (verbose) 
         message("Model to predict true splice sites built in ",
@@ -21,7 +28,7 @@ junctionErrorCorrection <- function(uniqueJunctions, verbose, juncDist = 10) {
     uniqueJunctions <- findHighConfidenceJunctions(junctions = uniqueJunctions,
         junctionModel = junctionModel, verbose = verbose, 
         juncDist)
-    assign("uniqueJunctions", uniqueJunctions, globalenv())
+    #assign("uniqueJunctions_highconf",uniqueJunctions, globalenv())
     uniqueJunctions$mergedHighConfJunctionIdAll_noNA <- 
         uniqueJunctions$mergedHighConfJunctionId
     uniqueJunctions$mergedHighConfJunctionIdAll_noNA[
@@ -50,6 +57,9 @@ testSpliceSites <- function(data, splice = "Start", prime = "start",
     annotatedSplice.prime <- data[, paste0("annotated",splice,".",prime)]
     annotatedSplice <- data[, paste0("annotated",splice)]
     predSplice.primeName <- paste0('spliceSitePrediction',splice,'.',prime)
+    assign("predSplice.primeName",predSplice.primeName, globalenv())
+    #Adding width as feature
+    junctionWidth <- data[,'junctionWidth']
     if (prime == "start") {
         mySet.all <- which((distSplice.prime != 0) & (spliceStrand != "*") &
             (spliceScore > 0) & (distSplice.prime < 15))
@@ -63,10 +73,10 @@ testSpliceSites <- function(data, splice = "Start", prime = "start",
             which((annotatedSplice.prime | annotatedSplice)[mySet.all])
         myData <- data.frame(spliceScore / (spliceScore + spliceScore.prime),
             spliceScore, distSplice.prime, (spliceStrand.prime == "+"),
-            (spliceStrand.prime == "-"), (spliceStrand == "+"))[mySet.all,]
+            (spliceStrand.prime == "-"), (spliceStrand == "+"), junctionWidth)[mySet.all,] #Adding junctionWidth as feature
         colnames(myData) <- paste('A',seq_len(ncol(myData)),sep = '.')
         modelmatrix <- 
-            model.matrix(~A.1+A.2+A.3+A.4+A.5, data = data.frame(myData))
+            model.matrix(~A.1+A.2+A.3+A.4+A.5+A.7, data = data.frame(myData)) #A.7 : junctionWidth
         predSplice.prime <- NULL
         if (is.null(junctionModel)) {
             model = fitXGBoostModel(labels.train = 
@@ -92,10 +102,11 @@ testSpliceSites <- function(data, splice = "Start", prime = "start",
 
 #' Create metadata for splice information
 #' @noRd
+#' Added witdth to be used as feature for prediction
 createSpliceMetadata <- function(annotatedJunctions, splice){
     metadata <- mcols(annotatedJunctions)[,c(paste0(tolower(splice),'Score'),
         paste0('junction',splice,'Name'), paste0('annotated',splice),
-        'spliceStrand','spliceMotif')]
+        'spliceStrand','spliceMotif','junctionWidth')] #added width here
     len <- length(annotatedJunctions)
     distdata <- data.frame(
         dist.start = c(0,(diff(start(annotatedJunctions)) *
@@ -138,6 +149,8 @@ predictSpliceJunctions <- function(annotatedJunctions, junctionModel=NULL,
             ranges = IRanges(start = GenomicRanges::start(annotatedJunctions),
             end = GenomicRanges::start(annotatedJunctions)), strand = '*')
             mcols(annotatedJunctionsTmp) <- mcols(annotatedJunctions)
+            #Adding junction width here as feature for prediction
+            mcols(annotatedJunctionsTmp)$junctionWidth <- annotatedJunctions@ranges@width
             annotatedJunctionsTmp <- unique(annotatedJunctionsTmp)
         } else {
             annotatedJunctionsTmp <- 
@@ -145,11 +158,14 @@ predictSpliceJunctions <- function(annotatedJunctions, junctionModel=NULL,
                 ranges = IRanges(start = GenomicRanges::end(annotatedJunctions),
                 end = GenomicRanges::end(annotatedJunctions)), strand = '*')
             mcols(annotatedJunctionsTmp) <- mcols(annotatedJunctions)
+            #Adding junction width here as feature for prediction
+            mcols(annotatedJunctionsTmp)$junctionWidth <- annotatedJunctions@ranges@width
             annotatedJunctionsTmp <- sort(unique(annotatedJunctionsTmp))
         }
         return(createSpliceMetadata(annotatedJunctionsTmp, splice))})
     names(metadataList) <- spliceVec
     if ( is.null(junctionModel)) junctionModelList <- list()
+    assign("metadataList", metadataList, globalenv())
     preds <- lapply(spliceVec, function(splice){
         preds <- lapply(tolower(spliceVec), function(prime){
             return(testSpliceSites(metadataList[[splice]], splice = splice,
@@ -262,6 +278,7 @@ findJunctionsByStrand <- function(candidateJunctions,highConfidentJunctionSet,
                                   juncDist = 10){
     highConfJunctions <- predictSpliceJunctions(candidateJunctions[
         which(highConfidentJunctionSet)], junctionModel = junctionModel)[[1]]
+    assign("highConfJunctions",highConfJunctions,globalenv())
     candidateJunctions$highConfJunctionPrediction = rep(FALSE,
                                                 length(candidateJunctions))
     ## replace all NA's with 0

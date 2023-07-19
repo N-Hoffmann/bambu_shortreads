@@ -28,8 +28,11 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
     if (length(shortReads) > 0){
         message("Using shortReads for correction")
         uniqueShortReadsIntrons <- unique(unlistIntrons(shortReads, use.ids = FALSE))
-        assign("uniqueShortReadsIntrons", uniqueShortReadsIntrons, globalenv())
-        #assign("uniqueAnnotatedIntrons",uniqueAnnotatedIntrons, globalenv())
+        #Removing strand information and duplicates in uniqueShortReadsIntrons
+        z <- data.frame(uniqueShortReadsIntrons)
+        z$strand <- NULL
+        uniqueShortReadsIntrons <- unique(makeGRangesFromDataFrame(z))
+
         #Filtering short read introns below minimum reference width
         uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(uniqueShortReadsIntrons@ranges@width < 70)),]
         #Filtering short read introns with low short read support
@@ -44,35 +47,60 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
         if (!is.null(intron_limit)){
             uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(uniqueShortReadsIntrons@ranges@width >= intron_limit)),]
         }
-        # #Filtering introns with non canonical splice sites
-        # uniqueShortReadsIntrons <- get_splice(uniqueShortReadsIntrons)
-        # uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(mcols(uniqueShortReadsIntrons)$splice != "GTAG")),]
-        # mcols(uniqueShortReadsIntrons) <- NULL
+        #Filtering introns with non canonical splice sites
+        uniqueShortReadsIntrons <- get_splice(uniqueShortReadsIntrons)
+        assign("uniqueShortReadsIntrons_splice",uniqueShortReadsIntrons, globalenv())
+        uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(mcols(uniqueShortReadsIntrons)$splice != "GTAG")),]
+        mcols(uniqueShortReadsIntrons) <- NULL
 
+
+        assign("uniqueShortReadsIntrons_final", uniqueShortReadsIntrons, globalenv())
         if(combined == TRUE){
             message("Using combination of shortReads and Annotations")
             #uniqueAnnotatedIntrons <- SparseSummarizedExperiment::combine(uniqueShortReadsIntrons, uniqueAnnotatedIntrons)
-            
+            #uniqueAnnotatedIntrons <- unique(c(uniqueShortReadsIntrons, uniqueAnnotatedIntrons))
+
             #Assigning origin of junction when using combination of shortreads and annotation
-            combined_df <- data.frame(SparseSummarizedExperiment::combine(uniqueShortReadsIntrons, uniqueAnnotatedIntrons))
-            anno_exclusive <- anti_join(combined_df, data.frame(uniqueShortReadsIntrons))
-            anno_exclusive$source = "Annotation"
-            sr_exclusive <- anti_join(combined_df, data.frame(uniqueAnnotatedIntrons))
-            sr_exclusive$source = "ShortReads"
-            both <- semi_join(data.frame(uniqueShortReadsIntrons), data.frame(uniqueAnnotatedIntrons))
-            both$source = "Both"
+            combined_df <- data.frame(unique(c(uniqueShortReadsIntrons, uniqueAnnotatedIntrons)))
+            # assign("combined_df", combined_df, globalenv())
+            anno_exclusive <- anti_join(combined_df, data.frame(uniqueShortReadsIntrons), by=c("seqnames","start","end","width")) #SR are unstranded, remove strand info
+            if(nrow(anno_exclusive) > 0){
+                anno_exclusive$source = "Annotation"
+            }
+            sr_exclusive <- anti_join(combined_df, data.frame(uniqueAnnotatedIntrons), by=c("seqnames","start","end","width"))
+            if(nrow(sr_exclusive) > 0){
+                sr_exclusive$source = "ShortReads"
+            }
+            #both <- semi_join(data.frame(uniqueShortReadsIntrons), data.frame(uniqueAnnotatedIntrons))
+            both <- semi_join(data.frame(uniqueAnnotatedIntrons), data.frame(uniqueShortReadsIntrons), by=c("seqnames","start","end","width"))
+            if(nrow(both) > 0){
+                both$source = "Both"
+            }
             sources <- c(anno_exclusive$source, sr_exclusive$source, both$source)
             df_list <- list(anno_exclusive[,1:5], sr_exclusive[,1:5], both[,1:5])
+            # assign("sources",sources,globalenv())
+            assign("df_list",df_list,globalenv())
             rebuild_df <- (df_list %>% purrr::reduce(full_join))
+            # assign("rebuild_df", rebuild_df, globalenv())
             uniqueAnnotatedIntrons <- makeGRangesFromDataFrame(rebuild_df)
             mcols(uniqueAnnotatedIntrons)$source = sources
-            assign("uniqueAnnotatedIntrons", uniqueAnnotatedIntrons, globalenv())
+            assign("uniqueAnnotatedIntrons_final", uniqueAnnotatedIntrons, globalenv())
         } else{
         message("Using shortReads only as annotations")
         uniqueAnnotatedIntrons <- uniqueShortReadsIntrons
         }
     }
     # end of short read processing
+
+    # ### Splitting Annotation into half, make bad annotations
+    # indexes <- sample(c(TRUE,FALSE), length(uniqueAnnotatedIntrons), replace = TRUE, prob = c(0.5,0.5))
+    # correct_annot <- uniqueAnnotatedIntrons[indexes]
+    # wrong_annot <- uniqueAnnotatedIntrons[!indexes]
+    # wrong_annot <- shift(wrong_annot, 10)
+    # mcols(correct_annot)$wrong <- "FALSE"
+    # mcols(wrong_annot)$wrong <- "TRUE"
+    # uniqueAnnotatedIntrons <- unique(c(correct_annot, wrong_annot))
+    # assign("shifted_anno", uniqueAnnotatedIntrons, globalenv())
 
     # correct strand of junctions based on (inferred) strand of reads
     strand(uniqueJunctions) <- junctionStrandCorrection(uniqueJunctions,
