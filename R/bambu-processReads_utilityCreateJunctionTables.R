@@ -36,8 +36,8 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
         #Filtering short read introns below minimum reference width
         uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(uniqueShortReadsIntrons@ranges@width < 70)),]
         #Filtering short read introns with low short read support
-        rawbam <- GenomicAlignments::readGAlignments("chrIS_shortreads.bam", param = ScanBamParam(flag = scanBamFlag(isSecondaryAlignment = FALSE)))
-        #rawbam <- GenomicAlignments::readGAlignments("SGNex_Hct116_Illumina_replicate3_run1.bam", param = ScanBamParam(flag = scanBamFlag(isSecondaryAlignment = FALSE)))
+        #rawbam <- GenomicAlignments::readGAlignments("chrIS_shortreads.bam", param = ScanBamParam(flag = scanBamFlag(isSecondaryAlignment = FALSE)))
+        rawbam <- GenomicAlignments::readGAlignments("SGNex_Hct116_Illumina_replicate3_run1.bam", param = ScanBamParam(flag = scanBamFlag(isSecondaryAlignment = FALSE)))
         raw_juncs <- data.frame(GenomicAlignments::summarizeJunctions(rawbam))
         rm(rawbam)
         sr_exclusive_df <- data.frame(anti_join(raw_juncs, data.frame(uniqueAnnotatedIntrons)))
@@ -48,13 +48,10 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
             uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(uniqueShortReadsIntrons@ranges@width >= intron_limit)),]
         }
         #Filtering introns with non canonical splice sites
-        uniqueShortReadsIntrons <- get_splice(uniqueShortReadsIntrons)
-        assign("uniqueShortReadsIntrons_splice",uniqueShortReadsIntrons, globalenv())
-        uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(mcols(uniqueShortReadsIntrons)$splice != "GTAG")),]
-        mcols(uniqueShortReadsIntrons) <- NULL
+        # uniqueShortReadsIntrons <- get_splice(uniqueShortReadsIntrons)
+        # uniqueShortReadsIntrons <- uniqueShortReadsIntrons[-(which(mcols(uniqueShortReadsIntrons)$splice != "GTAG")),]
+        # mcols(uniqueShortReadsIntrons) <- NULL
 
-
-        assign("uniqueShortReadsIntrons_final", uniqueShortReadsIntrons, globalenv())
         if(combined == TRUE){
             message("Using combination of shortReads and Annotations")
             #uniqueAnnotatedIntrons <- SparseSummarizedExperiment::combine(uniqueShortReadsIntrons, uniqueAnnotatedIntrons)
@@ -62,7 +59,6 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
 
             #Assigning origin of junction when using combination of shortreads and annotation
             combined_df <- data.frame(unique(c(uniqueShortReadsIntrons, uniqueAnnotatedIntrons)))
-            # assign("combined_df", combined_df, globalenv())
             anno_exclusive <- anti_join(combined_df, data.frame(uniqueShortReadsIntrons), by=c("seqnames","start","end","width")) #SR are unstranded, remove strand info
             if(nrow(anno_exclusive) > 0){
                 anno_exclusive$source = "Annotation"
@@ -78,13 +74,9 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
             }
             sources <- c(anno_exclusive$source, sr_exclusive$source, both$source)
             df_list <- list(anno_exclusive[,1:5], sr_exclusive[,1:5], both[,1:5])
-            # assign("sources",sources,globalenv())
-            assign("df_list",df_list,globalenv())
             rebuild_df <- (df_list %>% purrr::reduce(full_join))
-            # assign("rebuild_df", rebuild_df, globalenv())
             uniqueAnnotatedIntrons <- makeGRangesFromDataFrame(rebuild_df)
             mcols(uniqueAnnotatedIntrons)$source = sources
-            assign("uniqueAnnotatedIntrons_final", uniqueAnnotatedIntrons, globalenv())
         } else{
         message("Using shortReads only as annotations")
         uniqueAnnotatedIntrons <- uniqueShortReadsIntrons
@@ -100,7 +92,6 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
     # mcols(correct_annot)$wrong <- "FALSE"
     # mcols(wrong_annot)$wrong <- "TRUE"
     # uniqueAnnotatedIntrons <- unique(c(correct_annot, wrong_annot))
-    # assign("shifted_anno", uniqueAnnotatedIntrons, globalenv())
 
     # correct strand of junctions based on (inferred) strand of reads
     strand(uniqueJunctions) <- junctionStrandCorrection(uniqueJunctions,

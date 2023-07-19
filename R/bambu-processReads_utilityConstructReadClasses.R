@@ -65,12 +65,8 @@ constructSplicedReadClasses <- function(uniqueJunctions, unlisted_junctions,
 
     #Giving junctionID
     mcols(unlisted_junctions)$juncID <- 1:length(unlisted_junctions)
-    assign("unlisted_junctions_before_correction",unlisted_junctions, globalenv())
-
     unlisted_junctions <- correctIntronRanges(unlisted_junctions, 
         uniqueJunctions, correctedJunctionMatches)
-
-    assign("unlisted_junctions_after_correction_Ranges",unlisted_junctions, globalenv())
 
     rm(correctedJunctionMatches)
     if(any(mcols(unlisted_junctions)$remove)){  # remove microexons
@@ -86,8 +82,6 @@ constructSplicedReadClasses <- function(uniqueJunctions, unlisted_junctions,
         readStrand <- as.factor(getStrandFromGrList(readGrgList))
     }
 
-    assign("unlisted_junctions_after_correction_strand",unlisted_junctions, globalenv())
-
     # confidence type (note: can be changed to integer encoding)
     readConfidence <- factor(rep("highConfidenceJunctionReads",
         length(readStrand)), levels = c('highConfidenceJunctionReads',
@@ -97,41 +91,37 @@ constructSplicedReadClasses <- function(uniqueJunctions, unlisted_junctions,
         mcols(unlisted_junctions)$id))) > 0)
     readConfidence[lowConfidenceReads] <- "lowConfidenceJunctionReads"
 
-    assign("readConfidence", readConfidence, globalenv())
-
     rm(lowConfidenceReads, uniqueJunctions, allToUniqueJunctionMatch)
     #Adding junctionID metadatacolumn
     mcols(unlisted_junctions)$junctionID = 1:length(unlisted_junctions)
     readTable <- createReadTable(start(unlisted_junctions), 
         end(unlisted_junctions), mcols(unlisted_junctions)$id, readGrgList,
         readStrand, readConfidence,mcols(unlisted_junctions)$junctionID)
-    assign("readTable",readTable,globalenv())
 
     #Removing low confidence junctions
     readTable <- readTable %>% dplyr::filter(confidenceType == "highConfidenceJunctionReads")
-
+    print("before exonsByReadClass")
     exonsByReadClass <- createExonsByReadClass(readTable)
     readTable <- readTable %>% dplyr::select(chr.rc = chr, strand.rc = strand,
         startSD = startSD, endSD = endSD, 
         readCount.posStrand = readCount.posStrand, intronStarts, intronEnds, 
         confidenceType, readCount, readIds, junctionIDs)
+    print("after")
     mcols(exonsByReadClass) <- readTable
 
-    #junctionID tracking
-    #Creates dataframe with junctionID from all reads in a read class
-    a <- bambu:::myGaps(exonsByReadClass)
-    mcols(a)$junctionIDs = mcols(exonsByReadClass)$junctionIDs
-    for(i in 1:nrow(mcols(a))){
-        x = mcols(a)@listData[["junctionIDs"]][[i]]
-        y = paste(x, collapse=",")
-        z = strsplit(y,split=",")
-        final=as.numeric(unlist(z))
-        mcols(a)@listData[["junctionIDs"]][[i]] <- final
-    }
-    assign("idTrack", a ,globalenv())
-
-    assign("readTable",readTable,globalenv())
+    # #junctionID tracking
+    # #Creates dataframe with junctionID from all reads in a read class
+    # a <- bambu:::myGaps(exonsByReadClass)
+    # mcols(a)$junctionIDs = mcols(exonsByReadClass)$junctionIDs
+    # for(i in 1:nrow(mcols(a))){
+    #     x = mcols(a)@listData[["junctionIDs"]][[i]]
+    #     y = paste(x, collapse=",")
+    #     z = strsplit(y,split=",")
+    #     final=as.numeric(unlist(z))
+    #     mcols(a)@listData[["junctionIDs"]][[i]] <- final
+    # }
     options(scipen = 0)
+    print("pass constructspliceread")
     return(exonsByReadClass)
 }
 
@@ -163,7 +153,6 @@ correctIntronRanges <- function(unlisted_junctions, uniqueJunctions,
     #         start(unlisted_junctions)[i+1]=start(unlisted_junctions)[i]
     #     }
     # }
-
     #bugs
     #This breaks createExonByReadClass
     to_correct <- start(unlisted_junctions[exon_0size+1]) >= start(unlisted_junctions)[exon_0size]

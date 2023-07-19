@@ -135,6 +135,7 @@ bambu.processReadsByFile <- function(bam.file, genomeSequence, annotations, shor
                                                          combined = combined,
                                                          juncDist,
                                                          intron_limit)
+        print("pass isore.constructJunctionTables")
         # create SE object with reconstructed readClasses
         se <- isore.constructReadClasses(readGrgList, unlisted_junctions, 
                                          uniqueJunctions, runName = names(bam.file)[1],

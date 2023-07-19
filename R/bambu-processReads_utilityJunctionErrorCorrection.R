@@ -4,10 +4,8 @@
 #' @noRd
 junctionErrorCorrection <- function(uniqueJunctions, verbose, juncDist = 10) {
     start.ptm <- proc.time()
-    assign("uniqueJunctions_start",uniqueJunctions,globalenv())
     if (sum(uniqueJunctions$annotatedJunction) > 5000 &
         sum(!uniqueJunctions$annotatedJunction) > 4000) {
-        print("a")
         junctionModel <- (predictSpliceJunctions(uniqueJunctions,
             junctionModel = NULL, verbose = TRUE))[[2]]
     } else {
@@ -19,7 +17,6 @@ junctionErrorCorrection <- function(uniqueJunctions, verbose, juncDist = 10) {
         #     "precalculated model is used")
         #remove after
     }
-    assign("junctionModel",junctionModel, globalenv())
     end.ptm <- proc.time()
     if (verbose) 
         message("Model to predict true splice sites built in ",
@@ -28,7 +25,6 @@ junctionErrorCorrection <- function(uniqueJunctions, verbose, juncDist = 10) {
     uniqueJunctions <- findHighConfidenceJunctions(junctions = uniqueJunctions,
         junctionModel = junctionModel, verbose = verbose, 
         juncDist)
-    #assign("uniqueJunctions_highconf",uniqueJunctions, globalenv())
     uniqueJunctions$mergedHighConfJunctionIdAll_noNA <- 
         uniqueJunctions$mergedHighConfJunctionId
     uniqueJunctions$mergedHighConfJunctionIdAll_noNA[
@@ -57,7 +53,6 @@ testSpliceSites <- function(data, splice = "Start", prime = "start",
     annotatedSplice.prime <- data[, paste0("annotated",splice,".",prime)]
     annotatedSplice <- data[, paste0("annotated",splice)]
     predSplice.primeName <- paste0('spliceSitePrediction',splice,'.',prime)
-    assign("predSplice.primeName",predSplice.primeName, globalenv())
     #Adding width as feature
     junctionWidth <- data[,'junctionWidth']
     if (prime == "start") {
@@ -74,9 +69,11 @@ testSpliceSites <- function(data, splice = "Start", prime = "start",
         myData <- data.frame(spliceScore / (spliceScore + spliceScore.prime),
             spliceScore, distSplice.prime, (spliceStrand.prime == "+"),
             (spliceStrand.prime == "-"), (spliceStrand == "+"), junctionWidth)[mySet.all,] #Adding junctionWidth as feature
-        colnames(myData) <- paste('A',seq_len(ncol(myData)),sep = '.')
+        colnames(myData) <- c("spliceScore.Ratio","spliceScore","distSplice.prime","spliceStrand.prime.pos","spliceStrand.prime.neg","spliceStrand.pos","junctionWidth")
+        #colnames(myData) <- paste('A',seq_len(ncol(myData)),sep = '.')
         modelmatrix <- 
-            model.matrix(~A.1+A.2+A.3+A.4+A.5+A.7, data = data.frame(myData)) #A.7 : junctionWidth
+            #model.matrix(~A.1+A.2+A.3+A.4+A.5+A.7, data = data.frame(myData)) #A.7 : junctionWidth
+            model.matrix(~spliceScore.Ratio+spliceScore+distSplice.prime+spliceStrand.prime.pos+spliceStrand.prime.neg+junctionWidth, data = data.frame(myData))
         predSplice.prime <- NULL
         if (is.null(junctionModel)) {
             model = fitXGBoostModel(labels.train = 
@@ -165,7 +162,6 @@ predictSpliceJunctions <- function(annotatedJunctions, junctionModel=NULL,
         return(createSpliceMetadata(annotatedJunctionsTmp, splice))})
     names(metadataList) <- spliceVec
     if ( is.null(junctionModel)) junctionModelList <- list()
-    assign("metadataList", metadataList, globalenv())
     preds <- lapply(spliceVec, function(splice){
         preds <- lapply(tolower(spliceVec), function(prime){
             return(testSpliceSites(metadataList[[splice]], splice = splice,
@@ -188,8 +184,6 @@ predictSpliceJunctions <- function(annotatedJunctions, junctionModel=NULL,
                 splice,'.',prime)]] <- preds[[splice]][[prime]]$predsJ
             }}}
     if (is.null(junctionModel)) junctionModel <- junctionModelList
-    assign("junctionModel",junctionModel, globalenv())
-    assign("preds",preds,globalenv())
     return(list(annotatedJunctions, junctionModel))
 }
 
@@ -278,7 +272,6 @@ findJunctionsByStrand <- function(candidateJunctions,highConfidentJunctionSet,
                                   juncDist = 10){
     highConfJunctions <- predictSpliceJunctions(candidateJunctions[
         which(highConfidentJunctionSet)], junctionModel = junctionModel)[[1]]
-    assign("highConfJunctions",highConfJunctions,globalenv())
     candidateJunctions$highConfJunctionPrediction = rep(FALSE,
                                                 length(candidateJunctions))
     ## replace all NA's with 0
