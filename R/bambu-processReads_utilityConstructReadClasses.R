@@ -62,6 +62,10 @@ constructSplicedReadClasses <- function(uniqueJunctions, unlisted_junctions,
     correctedJunctionMatches <- 
         base::match(uniqueJunctions$mergedHighConfJunctionIdAll_noNA[
             allToUniqueJunctionMatch], names(uniqueJunctions))
+    
+    #Adding junctionID to junctions
+    mcols(unlisted_junctions)$juncID <- 1:length(unlisted_junctions)
+
     unlisted_junctions <- correctIntronRanges(unlisted_junctions, 
         uniqueJunctions, correctedJunctionMatches)
     rm(correctedJunctionMatches)
@@ -87,6 +91,13 @@ constructSplicedReadClasses <- function(uniqueJunctions, unlisted_junctions,
         mcols(unlisted_junctions)$id))) > 0)
     readConfidence[lowConfidenceReads] <- "lowConfidenceJunctionReads"
     rm(lowConfidenceReads, uniqueJunctions, allToUniqueJunctionMatch)
+
+    #Adding junctionID metadatacolumn
+    mcols(unlisted_junctions)$junctionID = 1:length(unlisted_junctions)
+    readTable <- createReadTable(start(unlisted_junctions), 
+        end(unlisted_junctions), mcols(unlisted_junctions)$id, readGrgList,
+        readStrand, readConfidence,mcols(unlisted_junctions)$junctionID)
+
     readTable <- createReadTable(start(unlisted_junctions), 
         end(unlisted_junctions), mcols(unlisted_junctions)$id, readGrgList,
         readStrand, readConfidence)
@@ -94,8 +105,24 @@ constructSplicedReadClasses <- function(uniqueJunctions, unlisted_junctions,
     readTable <- readTable %>% dplyr::select(chr.rc = chr, strand.rc = strand,
         startSD = startSD, endSD = endSD, 
         readCount.posStrand = readCount.posStrand, intronStarts, intronEnds, 
-        confidenceType, readCount, readIds)
+        confidenceType, readCount, readIds, junctionIDs) #added junctionIDs
     mcols(exonsByReadClass) <- readTable
+
+    #junctionID tracking
+    #Creates dataframe with junctionID from all reads in a read class
+    idTrack <- bambu:::myGaps(exonsByReadClass)
+    mcols(idTrack)$junctionIDs = mcols(exonsByReadClass)$junctionIDs
+    for(i in 1:nrow(mcols(idTrack))){
+        x = mcols(idTrack)@listData[["junctionIDs"]][[i]]
+        y = paste(x, collapse=",")
+        z = strsplit(y,split=",")
+        final=as.numeric(unlist(z))
+        mcols(idTrack)@listData[["junctionIDs"]][[i]] <- final
+    }
+    assign("idTrack", idTrack ,globalenv())
+    assign("readTable",readTable,globalenv())
+    assign("exonsByReadClass",exonsByReadClass,globalenv())
+
     options(scipen = 0)
     return(exonsByReadClass)
 }
