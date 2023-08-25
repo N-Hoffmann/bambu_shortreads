@@ -8,7 +8,7 @@
 #' @importFrom GenomicRanges match
 #' @importFrom dplyr tibble %>% mutate select
 #' @noRd
-isore.constructJunctionTables <- function(unlisted_junctions, annotations, shortReads,
+isore.constructJunctionTables <- function(unlisted_junctions, annotations,
     genomeSequence, stranded = FALSE, verbose = FALSE, combined = FALSE) {
     start.ptm <- proc.time()
     if(length(unlisted_junctions)==0) return(NULL)
@@ -21,18 +21,6 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
 
     uniqueAnnotatedIntrons <- unique(unlistIntrons(annotations, 
         use.ids = FALSE))
-
-    if (length(shortReads) > 0){
-        print("Using shortReads for correction")
-        uniqueShortReadsIntrons <- unique(unlistIntrons(shortReads, use.ids = FALSE))
-        if(combined == TRUE){
-            print("Using combination of shortReads and Annotations")
-            uniqueAnnotatedIntrons <- SparseSummarizedExperiment::combine(uniqueShortReadsIntrons, uniqueAnnotatedIntrons)
-        } else{
-        print("Using shortReads only as annotations")
-        uniqueAnnotatedIntrons <- uniqueShortReadsIntrons
-        }
-    }
     
     # correct strand of junctions based on (inferred) strand of reads
     strand(uniqueJunctions) <- junctionStrandCorrection(uniqueJunctions,
