@@ -27,7 +27,7 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
         uniqueShortReadsIntrons <- shortReads
         if(combined == TRUE){
             message("Using combination of shortReads and Annotations")
-            uniqueAnnotatedIntrons <- SparseSummarizedExperiment::combine(uniqueShortReadsIntrons, uniqueAnnotatedIntrons)
+            uniqueAnnotatedIntrons <- unique(c(uniqueShortReadsIntrons, uniqueAnnotatedIntrons))
         } else{
         message("Using shortReads only as annotations")
         uniqueAnnotatedIntrons <- uniqueShortReadsIntrons

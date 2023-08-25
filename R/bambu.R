@@ -146,7 +146,7 @@ bambu <- function(reads, annotations = NULL, genome = NULL, shortReads = NULL, N
             readClass.outputDir = rcOutDir, genomeSequence = genome)
     
     if (is.null(shortReads)) { shortReads = GRangesList()
-    } else shortReads <- prepareShortReadsFromBam(shortReads)
+    } else shortReads <- prepareShortReadsFromBam(shortReads, fasta = genome, minWidth, maxWidth)
 
     isoreParameters <- setIsoreParameters(isoreParameters = opt.discovery)
     #below line is to be compatible with earlier version of running bambu
