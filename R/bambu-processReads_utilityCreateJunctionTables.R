@@ -23,13 +23,13 @@ isore.constructJunctionTables <- function(unlisted_junctions, annotations, short
         use.ids = FALSE))
 
     if (length(shortReads) > 0){
-        print("Using shortReads for correction")
-        uniqueShortReadsIntrons <- unique(unlistIntrons(shortReads, use.ids = FALSE))
+        message("Using shortReads for correction")
+        uniqueShortReadsIntrons <- shortReads
         if(combined == TRUE){
-            print("Using combination of shortReads and Annotations")
+            message("Using combination of shortReads and Annotations")
             uniqueAnnotatedIntrons <- SparseSummarizedExperiment::combine(uniqueShortReadsIntrons, uniqueAnnotatedIntrons)
         } else{
-        print("Using shortReads only as annotations")
+        message("Using shortReads only as annotations")
         uniqueAnnotatedIntrons <- uniqueShortReadsIntrons
         }
     }
