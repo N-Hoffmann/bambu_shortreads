@@ -12,7 +12,7 @@
 #' @importFrom BiocParallel bplapply
 #' @importFrom BiocGenerics basename
 #' @noRd
-bambu.processReads <- function(reads, annotations, genomeSequence, shortReads,
+bambu.processReads <- function(reads, annotations, genomeSequence,
     readClass.outputDir=NULL, yieldSize=1000000, bpParameters, 
     stranded=FALSE, verbose=FALSE, isoreParameters = setIsoreParameters(NULL),
     lowMemory=FALSE, trackReads = trackReads, fusionMode = fusionMode,
@@ -48,7 +48,6 @@ bambu.processReads <- function(reads, annotations, genomeSequence, shortReads,
     readClassList <- bplapply(names(reads), function(bamFileName) {
         bambu.processReadsByFile(bam.file = reads[bamFileName],
         genomeSequence = genomeSequence,annotations = annotations,
-        shortReads = shortReads,
         readClass.outputDir = readClass.outputDir,
         stranded = stranded, min.readCount = min.readCount, 
         fitReadClassModel = fitReadClassModel, min.exonOverlap = min.exonOverlap, 
@@ -63,7 +62,7 @@ bambu.processReads <- function(reads, annotations, genomeSequence, shortReads,
 #' @inheritParams bambu
 #' @importFrom GenomeInfoDb seqlevels seqlevels<- keepSeqlevels
 #' @noRd
-bambu.processReadsByFile <- function(bam.file, genomeSequence, annotations, shortReads,
+bambu.processReadsByFile <- function(bam.file, genomeSequence, annotations,
     readClass.outputDir = NULL, stranded = FALSE, min.readCount = 2, 
     fitReadClassModel = TRUE, min.exonOverlap = 10, defaultModels = NULL, returnModel = FALSE, 
     verbose = FALSE, lowMemory = FALSE, trackReads = FALSE, fusionMode = FALSE,
@@ -125,7 +124,7 @@ bambu.processReadsByFile <- function(bam.file, genomeSequence, annotations, shor
         }
 
         uniqueJunctions <- isore.constructJunctionTables(unlisted_junctions, annotations,
-                                                         shortReads, genomeSequence, stranded = stranded, verbose = verbose,
+                                                         genomeSequence, stranded = stranded, verbose = verbose,
                                                          combined = combined)
         # create SE object with reconstructed readClasses
         se <- isore.constructReadClasses(readGrgList, unlisted_junctions, 

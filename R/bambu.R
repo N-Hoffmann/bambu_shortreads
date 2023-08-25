@@ -135,7 +135,7 @@
 #' se <- bambu(reads = test.bam, annotations = gr, 
 #'     genome = fa.file,  discovery = TRUE, quant = TRUE)
 #' @export
-bambu <- function(reads, annotations = NULL, genome = NULL, shortReads = NULL, NDR = NULL,
+bambu <- function(reads, annotations = NULL, genome = NULL, NDR = NULL,
     opt.discovery = NULL, opt.em = NULL, rcOutDir = NULL, discovery = TRUE, 
     quant = TRUE, stranded = FALSE,  ncore = 1, yieldSize = NULL,  
     trackReads = FALSE, returnDistTable = FALSE, lowMemory = FALSE, 
@@ -144,9 +144,6 @@ bambu <- function(reads, annotations = NULL, genome = NULL, shortReads = NULL, N
     if(is.null(annotations)) { annotations = GRangesList()
     } else annotations <- checkInputs(annotations, reads,
             readClass.outputDir = rcOutDir, genomeSequence = genome)
-    
-    if (is.null(shortReads)) { shortReads = GRangesList()
-    } else shortReads <- prepareDataFromBam(shortReads, verbose = verbose)
 
     isoreParameters <- setIsoreParameters(isoreParameters = opt.discovery)
     #below line is to be compatible with earlier version of running bambu
@@ -170,7 +167,7 @@ bambu <- function(reads, annotations = NULL, genome = NULL, shortReads = NULL, N
             rm.readClassSe <- TRUE # remove temporary read class files 
         }
         message("--- Start generating read class files ---")
-        readClassList <- bambu.processReads(reads, annotations, shortReads,
+        readClassList <- bambu.processReads(reads, annotations,
             genomeSequence = genome, 
             readClass.outputDir = rcOutDir, yieldSize, 
             bpParameters, stranded, verbose,
